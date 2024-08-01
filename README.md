@@ -25,7 +25,9 @@ Alternatively, run `build.sh`, that does it for you
 
 ## Usage instructions
 After the compilation is complete, you can fill your `config.cfg` following the `config.example.cfg` example config.
+
 You can get a Github Personal Access Token at https://github.com/settings/tokens, that is needed to avoid rate-limits on the Github API (going from 60 to 15000 allowed requests per hour). This token is for the `github-token` config option
+
 Create a Discord Bot at https://discord.com/developers/applications and use the token you get as the `discord-token`
 
 Start the bot with `./build/prbot`
