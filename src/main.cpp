@@ -14,12 +14,11 @@
 #include <string>
 #include "utils/github.h"
 #include "utils/regex.h"
+#include "utils/misc.h"
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 using namespace std;
 
-map<string, string> read_config(string config_path);
-string string_format( const std::string& format, ...);
 string get_env_var( string const & key );
 
 string GITHUB_TOKEN;
