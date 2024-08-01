@@ -2,7 +2,6 @@
 #include <algorithm>
 #include <cstring>
 #include <dpp/misc-enum.h>
-#include <iterator>
 #include <map>
 #include <string>
 #include "regex.h"
@@ -15,6 +14,14 @@ using namespace std;
 map<int, PRData> rhh_cache;
 map<int, PRData> pret_cache;
 
+/**
+ * Generates a message containing PR buttons based on the provided text.
+ *
+ * @param bot The bot cluster.
+ * @param GITHUB_TOKEN The GitHub API token.
+ * @param text The text to parse for PR numbers.
+ * @return A dpp::message containing the PR buttons.
+ */
 dpp::message generate_pr_message(dpp::cluster * bot, string GITHUB_TOKEN, string text){
     string parsed_message_content = regex_replace(regex_replace(text, formatted_link_content, " "), back_quote_content, " ");
 
@@ -39,6 +46,15 @@ dpp::message generate_pr_message(dpp::cluster * bot, string GITHUB_TOKEN, string
     return msg;
 }
 
+/**
+ * Adds a PR button to the message.
+ *
+ * @param bot The bot cluster.
+ * @param msg The message to add the button to.
+ * @param GITHUB_TOKEN The GitHub API token.
+ * @param pr_number The PR number.
+ * @param repo The repository type (RHH or PRET).
+ */
 void add_pr_button(dpp::cluster * bot, dpp::message * msg, string GITHUB_TOKEN, int pr_number, Repo repo){
     auto cached_data = repo == RHH ? rhh_cache.find(pr_number) : pret_cache.find(pr_number);
     PRData data;
@@ -74,6 +90,13 @@ void add_pr_button(dpp::cluster * bot, dpp::message * msg, string GITHUB_TOKEN, 
     msg->add_component(generate_pr_button(repo, data));
 }
 
+/**
+ * Generates a PR button component.
+ *
+ * @param repo The repository type.
+ * @param data The PR data.
+ * @return A dpp::component representing the PR button.
+ */
 dpp::component generate_pr_button(Repo repo, PRData data){
     return dpp::component().add_component(
         dpp::component()
@@ -84,12 +107,27 @@ dpp::component generate_pr_button(Repo repo, PRData data){
     );
 }
 
-
+/**
+ * Gets the Github API URL for a PR.
+ *
+ * @param pr_number The PR number.
+ * @param repo The repository type.
+ * @return The URL for the PR.
+ */
 string get_pr_url(int pr_number, Repo repo){
     string repo_string = repo == RHH ? "rh-hideout/pokeemerald-expansion" : "pret/pokeemerald";
     return "https://api.github.com/repos/"+ repo_string + "/issues/" + to_string(pr_number);
 }
 
+/**
+ * Fetches PR data from the GitHub API.
+ *
+ * @param bot The bot cluster.
+ * @param GITHUB_TOKEN The GitHub API token.
+ * @param pr_number The PR number.
+ * @param repo The repository type.
+ * @param callback The callback function to handle the HTTP request completion.
+ */
 void fetch_pr_data(dpp::cluster * bot, string GITHUB_TOKEN, int pr_number, Repo repo, dpp::http_completion_event callback){
     bot->request(
         get_pr_url(pr_number, repo), dpp::m_get, callback,
