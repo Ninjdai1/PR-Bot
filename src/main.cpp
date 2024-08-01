@@ -11,9 +11,7 @@
 #include <map>
 #include <string>
 #include <vector>
-#include <memory>
 #include <string>
-#include <stdexcept>
 #include "utils/github.h"
 #include "utils/regex.h"
 #include <nlohmann/json.hpp>
@@ -43,7 +41,7 @@ int main (int argc, char *argv[]) {
         if(event.msg.author.is_bot()) return;
 
         dpp::message reply_message = generate_pr_message(&bot, GITHUB_TOKEN, event.msg.content);
-        if(reply_message.components.size() > 0) event.reply(reply_message); 
+        if(reply_message.components.size() > 0) event.reply(reply_message);
     });
 
     bot.on_message_update([&bot](const dpp::message_update_t& event) {

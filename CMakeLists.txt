@@ -4,7 +4,10 @@
     project(prbot VERSION 1.0 DESCRIPTION "PR Bot")
 	 
 	list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-	 
+	
+    # Un-comment to compile with debug sybols
+    #set(CMAKE_BUILD_TYPE Debug)
+
     ADD_LIBRARY(RHHUtils
         src/utils/misc.cpp
         src/utils/github.cpp

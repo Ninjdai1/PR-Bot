@@ -1,10 +1,19 @@
 #include "github.h"
+#include <algorithm>
+#include <cstring>
+#include <dpp/misc-enum.h>
+#include <iterator>
+#include <map>
 #include <string>
 #include "regex.h"
 #include "misc.h"
 #include <nlohmann/json.hpp>
+#include <utility>
 using json = nlohmann::json;
 using namespace std;
+
+map<int, PRData> rhh_cache;
+map<int, PRData> pret_cache;
 
 dpp::message generate_pr_message(dpp::cluster * bot, string GITHUB_TOKEN, string text){
     string parsed_message_content = regex_replace(regex_replace(text, formatted_link_content, " "), back_quote_content, " ");
@@ -17,40 +26,61 @@ dpp::message generate_pr_message(dpp::cluster * bot, string GITHUB_TOKEN, string
     dpp::message msg;
 
     for(int pr_number: rhh_matches){
-        if (pr_number <= 20 || std::find(fetched_rhh_matches.begin(), fetched_rhh_matches.end(),pr_number)!=fetched_rhh_matches.end() || msg.components.size() == 5) continue;
-        add_pr_button(bot, msg, GITHUB_TOKEN, pr_number, RHH);
+        if (pr_number <= 20 || find(fetched_rhh_matches.begin(), fetched_rhh_matches.end(),pr_number)!=fetched_rhh_matches.end() || msg.components.size() == 5) continue;
+        add_pr_button(bot, &msg, GITHUB_TOKEN, pr_number, RHH);
+        fetched_rhh_matches.push_back(pr_number);
     }
 
     for(int pr_number: pret_matches){
-        add_pr_button(bot, msg, GITHUB_TOKEN, pr_number, PRET);
+        if (find(fetched_pret_matches.begin(), fetched_pret_matches.end(),pr_number)!=fetched_pret_matches.end() || msg.components.size() == 5) continue;
+        add_pr_button(bot, &msg, GITHUB_TOKEN, pr_number, PRET);
+        fetched_pret_matches.push_back(pr_number);
     }
     return msg;
 }
 
-void add_pr_button(dpp::cluster * bot, dpp::message msg, string GITHUB_TOKEN, int pr_number, Repo repo){
-    std::promise<json> promise;
-    std::future<json> future = promise.get_future();
-    fetch_pr_data(bot, GITHUB_TOKEN, pr_number, repo, [&promise,&bot](const dpp::http_request_completion_t & cc){
-        if(cc.status != 200) {
-            promise.set_value(json());
-            return 1;
-        }
-        promise.set_value(json::parse(cc.body));
-        return 0;
-    });
+void add_pr_button(dpp::cluster * bot, dpp::message * msg, string GITHUB_TOKEN, int pr_number, Repo repo){
+    auto cached_data = repo == RHH ? rhh_cache.find(pr_number) : pret_cache.find(pr_number);
+    PRData data;
+    if(cached_data == rhh_cache.end() || cached_data == pret_cache.end()){
+        promise<json> promise;
+        future<json> future = promise.get_future();
+        fetch_pr_data(bot, GITHUB_TOKEN, pr_number, repo, [&promise,&bot](const dpp::http_request_completion_t & cc){
+            if(cc.status != 200) {
+                promise.set_value(json());
+                return 1;
+            }
+            promise.set_value(json::parse(cc.body));
+            return 0;
+        });
+        json raw_data = future.get();
+        if(raw_data.is_null()) return;
 
-    json data = future.get();
-    if(!data.is_null()) msg.add_component(generate_pr_button(repo, data));
+        string label = (repo==PRET ? "pret" : (string)"") + "#" + to_string(pr_number) + " - " + (string)raw_data["title"];
+        label = (label.length() > 80 ? label.substr(0, 77)+"..." : label);
+
+        data = {
+            .pr_number = pr_number,
+            .html_url = (string)raw_data["html_url"]
+        };
+        strcpy(data.label, label.c_str());
+        switch (repo) {
+            case RHH: rhh_cache.emplace(data.pr_number, data);
+            case PRET: pret_cache.emplace(data.pr_number, data);
+        }
+    } else {
+        data = cached_data->second;
+    }
+    msg->add_component(generate_pr_button(repo, data));
 }
 
-dpp::component generate_pr_button(Repo repo, json data){
-    string label = (repo==PRET ? "pret" : (string)"") + "#" + to_string(data["number"]) + " - " + (string)data["title"];
+dpp::component generate_pr_button(Repo repo, PRData data){
     return dpp::component().add_component(
         dpp::component()
             .set_type(dpp::component_type::cot_button)
-            .set_label(label.length() > 80 ? label.substr(0, 77)+"..." : label)
+            .set_label(data.label)
             .set_style(dpp::component_style::cos_link)
-            .set_url((string)data["html_url"])
+            .set_url(data.html_url)
     );
 }
 
