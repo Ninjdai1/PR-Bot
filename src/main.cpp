@@ -8,6 +8,7 @@
 #include <dpp/misc-enum.h>
 #include <dpp/once.h>
 #include <dpp/queues.h>
+#include <dpp/snowflake.h>
 #include <map>
 #include <string>
 #include <vector>
@@ -22,6 +23,8 @@ using namespace std;
 string get_env_var( string const & key );
 
 string GITHUB_TOKEN;
+// Snowflake: Received message id, Message: Replied message
+map<dpp::snowflake, dpp::message> message_cache;
 
 int main (int argc, char *argv[]) {
     map<string, string> config = read_config("config.cfg");
@@ -40,13 +43,27 @@ int main (int argc, char *argv[]) {
         if(event.msg.author.is_bot()) return;
 
         dpp::message reply_message = generate_pr_message(&bot, GITHUB_TOKEN, event.msg.content);
-        if(reply_message.components.size() > 0) event.reply(reply_message);
+        if(reply_message.components.size() > 0) {
+            event.reply(reply_message, false, [&bot, event](const dpp::confirmation_callback_t& callback) {
+                if(callback.is_error()) bot.log(dpp::ll_error, callback.get_error().human_readable);
+                message_cache.emplace(event.msg.id, callback.get<dpp::message>());
+            });
+        }
     });
 
     bot.on_message_update([&bot](const dpp::message_update_t& event) {
         if(event.msg.author.is_bot()) return;
 
+        auto cached_message_iter = message_cache.find(event.msg.id);
+        if(cached_message_iter == message_cache.end()) return;
+
         dpp::message reply_message = generate_pr_message(&bot, GITHUB_TOKEN, event.msg.content);
+        cached_message_iter->second.components.swap(reply_message.components);
+        bot.message_edit(cached_message_iter->second);
+    });
+
+    bot.on_message_delete([](const dpp::message_delete_t& event){
+        message_cache.erase(event.id);
     });
 
     bot.start(dpp::st_wait);
