@@ -58,6 +58,11 @@ int main (int argc, char *argv[]) {
         if(cached_message_iter == message_cache.end()) return;
 
         dpp::message reply_message = generate_pr_message(&bot, GITHUB_TOKEN, event.msg.content);
+        if(reply_message.components.size()==0){
+            bot.message_delete(cached_message_iter->second.id, cached_message_iter->second.channel_id);
+            message_cache.erase(cached_message_iter->first);
+            return;
+        }
         cached_message_iter->second.components.swap(reply_message.components);
         bot.message_edit(cached_message_iter->second);
     });
