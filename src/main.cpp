@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 #include <string>
+#include "interactions/slashcommands_manager.h"
 #include "utils/github.h"
 #include "utils/regex.h"
 #include "utils/misc.h"
@@ -31,13 +32,19 @@ int main (int argc, char *argv[]) {
     GITHUB_TOKEN = config.at("github-token");
 
     dpp::cluster bot(config.at("discord-token"), dpp::i_default_intents | dpp::i_message_content);
+
+    slashcommands_manager command_manager(&bot);
     
     bot.on_log(dpp::utility::cout_logger());
 
-    bot.on_ready([&bot](const dpp::ready_t& event){
+    bot.on_ready([&bot,&command_manager](const dpp::ready_t& event){
         bot.log(dpp::ll_info, "Ready !");
+        command_manager.register_slash_commands();
     });
     
+    bot.on_interaction_create([&command_manager](const dpp::interaction_create_t& event){
+        command_manager.on_interaction_create(event);
+    });
 
     bot.on_message_create([&bot](const dpp::message_create_t& event) {
         if(event.msg.author.is_bot()) return;

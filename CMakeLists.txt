@@ -13,6 +13,10 @@
         src/utils/github.cpp
         src/utils/regex.cpp
     )
+    ADD_LIBRARY(RHHInteractions
+        src/interactions/slashcommands_manager.cpp
+        src/interactions/commands/issue.cpp
+    )
 	add_executable(${PROJECT_NAME}
 	    src/main.cpp
 	)
@@ -22,6 +26,7 @@
 	target_link_libraries(${PROJECT_NAME} 
 	    ${DPP_LIBRARIES}
         RHHUtils
+        RHHInteractions
     )
 
 	target_include_directories(${PROJECT_NAME} PRIVATE
